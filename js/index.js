@@ -121,7 +121,7 @@ const init = () => {
     document.addEventListener('keydown', handleKeyboardInput);
     document.addEventListener('keyup', handleKeyboardInput);
 
-    quackamole.broadcastData('PEER_CONNECT', {peerIdentifier});
+    quackamole.broadcastData('PEER_CONNECT', {remotePeerIdentifier: peerIdentifier});
 
     requestAnimationFrame(gameLoop);
 };
