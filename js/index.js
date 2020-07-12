@@ -34,10 +34,11 @@ quackamole.eventManager.on('PEER_DATA', ({remotePeerIdentifier, remotePlayerXY, 
 });
 
 quackamole.eventManager.on('PEER_CONNECT', ({remotePeerIdentifier}) => {
-    console.log('PEER CONNECTED', remotePeerIdentifier);
+    console.log('----- PEER CONNECTED', remotePeerIdentifier);
 });
 
 quackamole.eventManager.on('PEER_DISCONNECT', ({remotePeerIdentifier}) => {
+    console.log('PEER_DISCONNECTED', remotePeerIdentifier);
     worldEntities.delete(remotePeerIdentifier + 'mouseXY');
     worldEntities.delete(remotePeerIdentifier + 'player');
     worldEntities.delete(remotePeerIdentifier + 'gun');
@@ -57,11 +58,8 @@ const handleKeyboardInput = evt => {
     }
 };
 
-window.onload = () => {
-    quackamole.broadcastData('PEER_CONNECT', {peerIdentifier});
-}
-
 window.onbeforeunload = () => {
+    console.log('-----onbeforeunload');
     quackamole.broadcastData('PEER_DISCONNECT', {peerIdentifier});
 };
 
@@ -123,6 +121,8 @@ const init = () => {
     document.addEventListener('keydown', handleKeyboardInput);
     document.addEventListener('keyup', handleKeyboardInput);
 
+    quackamole.broadcastData('PEER_CONNECT', {peerIdentifier});
+
     requestAnimationFrame(gameLoop);
 };
 
@@ -132,3 +132,4 @@ init();
 // TODO refactor into classes ==> Entity (abstract base class), Player, Bullet, Wall, Gun, World, Camera etc.
 // TODO optimize the registration of entities to be drawn (track entities in world, draw only entities that have render flag set to true)
 // TODO Improve camera. Try centering player and moving world around him as well as moving world only if player close enough to the wall
+// TODO add a z-index for each entity and sort all entities before rendering them
