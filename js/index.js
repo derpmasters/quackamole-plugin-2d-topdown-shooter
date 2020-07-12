@@ -2,11 +2,47 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const quackamole = new Quackamole();
 let playerXY = [200, 200];
+let playerRotation = 0;
 let mouseXY = [0, 0];
 let playerMovementDirection = [0, 0];
 const playerInput = new Map();
-const playerMovementSpeed = 5; // TODO use fps delta to make it per second
+const playerMovementSpeed = 5; // TODO use fps delta to make it more deterministic
 const worldEntities = new Map();
+const peerIdentifier = Math.floor(Math.random() * 100000000000); // TODO temporary peer identifier until we can request the peerId and nickname inside SDKs
+
+//////////////////////////
+// QUACKAMOLE SDK STUFF //
+//////////////////////////
+const sendCurrentState = () => {
+    quackamole.broadcastData('PEER_DATA', {
+        remotePeerIdentifier: peerIdentifier,
+        remotePlayerXY: playerXY,
+        remotePlayerRotation: playerRotation,
+        remoteMouseXY: mouseXY
+    });
+};
+
+quackamole.eventManager.on('PEER_DATA', ({remotePeerIdentifier, remotePlayerXY, remotePlayerRotation, remoteMouseXY}) => {
+    if (remotePeerIdentifier === peerIdentifier) { return; }
+
+    // register remote player for drawing
+    worldEntities.set(remotePeerIdentifier + 'mouseXY', () => CanvasUtils.drawCircle(ctx, mouseXY, 5, 'red'));
+    worldEntities.set(remotePeerIdentifier + 'player', () => CanvasUtils.drawRectangle(ctx, remotePlayerXY, 50, 50, remotePlayerRotation));
+
+    const gunTipXYOffset = VectorUtils.multiplyBy(VectorUtils.lookAtDirection(remotePlayerXY, remoteMouseXY), 30);
+    worldEntities.set(remotePeerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, playerXY, VectorUtils.add(playerXY, gunTipXYOffset), 10, 'red'));
+});
+
+quackamole.eventManager.on('PEER_CONNECT', ({remotePeerIdentifier}) => {
+    console.log('PEER CONNECTED', remotePeerIdentifier);
+});
+
+quackamole.eventManager.on('PEER_DISCONNECT', ({remotePeerIdentifier}) => {
+    worldEntities.delete(remotePeerIdentifier + 'mouseXY');
+    worldEntities.delete(remotePeerIdentifier + 'player');
+    worldEntities.delete(remotePeerIdentifier + 'gun');
+});
+
 
 ////////////////////////
 // DOM EVENT HANDLERS //
@@ -19,6 +55,14 @@ const handleKeyboardInput = evt => {
     if (playerInput.has(evt.key)) {
         playerInput.get(evt.key).active = evt.type === 'keydown';
     }
+};
+
+window.onload = () => {
+    quackamole.broadcastData('PEER_CONNECT', {peerIdentifier});
+}
+
+window.onbeforeunload = () => {
+    quackamole.broadcastData('PEER_DISCONNECT', {peerIdentifier});
 };
 
 /////////////////
@@ -40,13 +84,13 @@ const update = () => {
     playerXY = VectorUtils.min(playerXY, [canvas.width, canvas.height]);
 
     // register entities for drawing
-    worldEntities.set('mouseXY', () => CanvasUtils.drawCircle(ctx, mouseXY, 5, 'red'));
+    worldEntities.set(peerIdentifier + 'mouseXY', () => CanvasUtils.drawCircle(ctx, mouseXY, 5, 'blue'));
 
-    const playerRotation = VectorUtils.lookAtRotation(playerXY, mouseXY);
-    worldEntities.set('player', () => CanvasUtils.drawRectangle(ctx, playerXY, 50, 50, playerRotation));
+    playerRotation = VectorUtils.lookAtRotation(playerXY, mouseXY);
+    worldEntities.set(peerIdentifier + 'player', () => CanvasUtils.drawRectangle(ctx, playerXY, 50, 50, playerRotation));
 
     const gunTipXYOffset = VectorUtils.multiplyBy(VectorUtils.lookAtDirection(playerXY, mouseXY), 30);
-    worldEntities.set('playerGun', () => CanvasUtils.drawLine(ctx, playerXY, VectorUtils.add(playerXY, gunTipXYOffset), 10, 'blue'));
+    worldEntities.set(peerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, playerXY, VectorUtils.add(playerXY, gunTipXYOffset), 10, 'blue'));
 };
 
 const render = () => {
@@ -59,6 +103,7 @@ const render = () => {
 const gameLoop = () => {
     update();
     render();
+    sendCurrentState();
     requestAnimationFrame(gameLoop);
 }
 
@@ -82,7 +127,6 @@ const init = () => {
 };
 
 init();
-
 
 // TODO integrate with Quackamole and render other player characters (don't worry about interpolation yet)
 // TODO refactor into classes ==> Entity (abstract base class), Player, Bullet, Wall, Gun, World, Camera etc.
