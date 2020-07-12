@@ -3,7 +3,6 @@ const ctx = canvas.getContext('2d');
 const quackamole = new Quackamole();
 let playerXY = [200, 200];
 let mouseXY = [0, 0];
-let playerRotation = 0;
 let playerMovementDirection = [0, 0];
 const playerInput = new Map();
 const playerMovementSpeed = 5; // TODO use fps delta to make it per second
@@ -26,29 +25,31 @@ const handleKeyboardInput = evt => {
 // MAIN LOGIC //
 ////////////////
 const update = () => {
+    // get movement direction based on WASD input
     playerMovementDirection = [0, 0];
     for (let input of playerInput.values()) {
-      if (input.active) {
-          playerMovementDirection = VectorUtils.add(playerMovementDirection, input.direction);
-      }
-}
+        if (input.active) { playerMovementDirection = VectorUtils.add(playerMovementDirection, input.direction) }
+    }
     playerMovementDirection = VectorUtils.normalize(playerMovementDirection);
     // playerMovementDirection = VectorUtils.rotate(playerMovementDirection, playerRotation); // FIXME rotating like this in 2d feels weird
 
+    // update player location
     playerXY[0] += playerMovementDirection[0] * playerMovementSpeed;
     playerXY[1] += playerMovementDirection[1] * playerMovementSpeed;
     playerXY = VectorUtils.max(playerXY, [0, 0]);
     playerXY = VectorUtils.min(playerXY, [canvas.width, canvas.height]);
 
+    // register entities for drawing
     worldEntities.set('mouseXY', () => CanvasUtils.drawCircle(ctx, mouseXY, 5, 'red'));
 
-    playerRotation = VectorUtils.lookAtRotation(playerXY, mouseXY);
+    const playerRotation = VectorUtils.lookAtRotation(playerXY, mouseXY);
     worldEntities.set('player', () => CanvasUtils.drawRectangle(ctx, playerXY, 50, 50, playerRotation));
+
     const gunTipXYOffset = VectorUtils.multiplyBy(VectorUtils.lookAtDirection(playerXY, mouseXY), 30);
     worldEntities.set('playerGun', () => CanvasUtils.drawLine(ctx, playerXY, VectorUtils.add(playerXY, gunTipXYOffset), 10, 'blue'));
 };
 
-const draw = () => {
+const render = () => {
     CanvasUtils.clearCtx(ctx);
     for (let callback of worldEntities.values()) {
         callback();
@@ -57,7 +58,7 @@ const draw = () => {
 
 const gameLoop = () => {
     update();
-    draw();
+    render();
     requestAnimationFrame(gameLoop);
 }
 
@@ -81,3 +82,9 @@ const init = () => {
 };
 
 init();
+
+
+// TODO integrate with Quackamole and render other player characters (don't worry about interpolation yet)
+// TODO refactor into classes ==> Entity (abstract base class), Player, Bullet, Wall, Gun, World, Camera etc.
+// TODO optimize the registration of entities to be drawn (track entities in world, draw only entities that have render flag set to true)
+// TODO Improve camera. Try centering player and moving world around him as well as moving world only if player close enough to the wall
