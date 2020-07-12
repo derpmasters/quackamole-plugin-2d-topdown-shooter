@@ -7,7 +7,8 @@ let mouseXY = [0, 0];
 let playerMovementDirection = [0, 0];
 const playerInput = new Map();
 const playerMovementSpeed = 5; // TODO use fps delta to make it more deterministic
-const worldEntities = new Map();
+let worldEntities = new Map();
+let worldEntitiesDraft = new Map();
 const peerIdentifier = Math.floor(Math.random() * 100000000000); // TODO temporary peer identifier until we can request the peerId and nickname inside SDKs
 
 //////////////////////////
@@ -26,11 +27,11 @@ quackamole.eventManager.on('PEER_DATA', ({remotePeerIdentifier, remotePlayerXY, 
     if (remotePeerIdentifier === peerIdentifier) { return; }
 
     // register remote player for drawing
-    worldEntities.set(remotePeerIdentifier + 'mouseXY', () => CanvasUtils.drawCircle(ctx, remoteMouseXY, 5, 'red'));
-    worldEntities.set(remotePeerIdentifier + 'player', () => CanvasUtils.drawRectangle(ctx, remotePlayerXY, 50, 50, remotePlayerRotation));
+    worldEntitiesDraft.set(remotePeerIdentifier + 'mouseXY', () => CanvasUtils.drawCircle(ctx, remoteMouseXY, 5, 'red'));
+    worldEntitiesDraft.set(remotePeerIdentifier + 'player', () => CanvasUtils.drawRectangle(ctx, remotePlayerXY, 50, 50, remotePlayerRotation));
 
     const gunTipXYOffset = VectorUtils.multiplyBy(VectorUtils.lookAtDirection(remotePlayerXY, remoteMouseXY), 30);
-    worldEntities.set(remotePeerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, remotePlayerXY, VectorUtils.add(remotePlayerXY, gunTipXYOffset), 10, 'red'));
+    worldEntitiesDraft.set(remotePeerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, remotePlayerXY, VectorUtils.add(remotePlayerXY, gunTipXYOffset), 10, 'red'));
 });
 
 quackamole.eventManager.on('PEER_CONNECT', ({remotePeerIdentifier}) => {
@@ -39,9 +40,9 @@ quackamole.eventManager.on('PEER_CONNECT', ({remotePeerIdentifier}) => {
 
 quackamole.eventManager.on('PEER_DISCONNECT', ({remotePeerIdentifier}) => {
     console.log('PEER_DISCONNECTED', remotePeerIdentifier);
-    worldEntities.delete(remotePeerIdentifier + 'mouseXY');
-    worldEntities.delete(remotePeerIdentifier + 'player');
-    worldEntities.delete(remotePeerIdentifier + 'gun');
+    worldEntitiesDraft.delete(remotePeerIdentifier + 'mouseXY');
+    worldEntitiesDraft.delete(remotePeerIdentifier + 'player');
+    worldEntitiesDraft.delete(remotePeerIdentifier + 'gun');
 });
 
 
@@ -69,6 +70,7 @@ window.onbeforeunload = () => {
 // MAIN LOGIC //
 ////////////////
 const update = () => {
+    // worldEntities = new Map(worldEntitiesDraft);
     // get movement direction based on WASD input
     playerMovementDirection = [0, 0];
     for (let input of playerInput.values()) {
@@ -98,6 +100,9 @@ const render = () => {
     for (let callback of worldEntities.values()) {
         callback();
     }
+
+    worldEntities = new Map(worldEntitiesDraft);
+    worldEntitiesDraft = worldEntities;
 }
 
 const gameLoop = () => {
