@@ -30,7 +30,7 @@ quackamole.eventManager.on('PEER_DATA', ({remotePeerIdentifier, remotePlayerXY, 
     worldEntities.set(remotePeerIdentifier + 'player', () => CanvasUtils.drawRectangle(ctx, remotePlayerXY, 50, 50, remotePlayerRotation));
 
     const gunTipXYOffset = VectorUtils.multiplyBy(VectorUtils.lookAtDirection(remotePlayerXY, remoteMouseXY), 30);
-    worldEntities.set(remotePeerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, remotePlayerRotation, VectorUtils.add(remotePlayerXY, gunTipXYOffset), 10, 'red'));
+    worldEntities.set(remotePeerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, remotePlayerXY, VectorUtils.add(remotePlayerXY, gunTipXYOffset), 10, 'red'));
 });
 
 quackamole.eventManager.on('PEER_CONNECT', ({remotePeerIdentifier}) => {
