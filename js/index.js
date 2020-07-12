@@ -60,7 +60,7 @@ const handleKeyboardInput = evt => {
 
 window.onbeforeunload = () => {
     console.log('-----onbeforeunload');
-    quackamole.broadcastData('PEER_DISCONNECT', {peerIdentifier});
+    quackamole.broadcastData('PEER_DISCONNECT', {remotePeerIdentifier: peerIdentifier});
     alert("onbeforeunload was triggered");
     prompt('Do you really want to leave?');
 };
