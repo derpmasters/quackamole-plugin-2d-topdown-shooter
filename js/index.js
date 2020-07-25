@@ -1,142 +1,80 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const quackamole = new Quackamole();
-let playerXY = [200, 200];
+
+const canvasBackground = document.getElementById('canvas-background');
+const ctxBackground = canvasBackground.getContext('2d');
 let playerRotation = 0;
-let mouseXY = [0, 0];
-let playerMovementDirection = [0, 0];
-const playerInput = new Map();
-const playerMovementSpeed = 5; // TODO use fps delta to make it more deterministic
-let worldEntities = new Map();
-let worldEntitiesDraft = new Map();
-const peerIdentifier = Math.floor(Math.random() * 100000000000); // TODO temporary peer identifier until we can request the peerId and nickname inside SDKs
+let playerPosition = [100, 0];
 
-//////////////////////////
-// QUACKAMOLE SDK STUFF //
-//////////////////////////
-const sendCurrentState = () => {
-    quackamole.broadcastData('PEER_DATA', {
-        remotePeerIdentifier: peerIdentifier,
-        remotePlayerXY: playerXY,
-        remotePlayerRotation: playerRotation,
-        remoteMouseXY: mouseXY
-    });
-};
+canvas.width = window.innerWidth * 0.95;
+canvas.height = window.innerHeight * 0.95;
 
-quackamole.eventManager.on('PEER_DATA', ({remotePeerIdentifier, remotePlayerXY, remotePlayerRotation, remoteMouseXY}) => {
-    if (remotePeerIdentifier === peerIdentifier) { return; }
+canvasBackground.width = window.innerWidth * 0.95;
+canvasBackground.height = window.innerHeight * 0.95;
 
-    // register remote player for drawing
-    worldEntitiesDraft.set(remotePeerIdentifier + 'mouseXY', () => CanvasUtils.drawCircle(ctx, remoteMouseXY, 5, 'red'));
-    worldEntitiesDraft.set(remotePeerIdentifier + 'player', () => CanvasUtils.drawRectangle(ctx, remotePlayerXY, 50, 50, remotePlayerRotation));
+////////////
+// PLAYER //
+////////////
+ctx.translate(canvas.width / 2, canvas.height / 2);
+CanvasUtils.drawRectangle(ctx, [0, 0], 50, 25, 0);
+CanvasUtils.drawCircle(ctx, [0, 0], 10, 'red');
 
-    const gunTipXYOffset = VectorUtils.multiplyBy(VectorUtils.lookAtDirection(remotePlayerXY, remoteMouseXY), 30);
-    worldEntitiesDraft.set(remotePeerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, remotePlayerXY, VectorUtils.add(remotePlayerXY, gunTipXYOffset), 10, 'red'));
-});
+///////////////
+// ZA WARUDO //
+///////////////
+// ctxBackground.translate(canvas.width / 2, canvas.height / 2);
+//
+// ctxBackground.rotate(playerRotation * Math.PI / 180);
+// CanvasUtils.drawRectangle(ctxBackground, [60, 0], 50, 25, 22,5);
+// CanvasUtils.drawRectangle(ctxBackground, [60, 60], 50, 25, 45);
+// CanvasUtils.drawRectangle(ctxBackground, [60, 120], 50, 25, 77,5);
+// CanvasUtils.drawRectangle(ctxBackground, [60, 180], 50, 25, 90);
+// CanvasUtils.drawRectangle(ctxBackground, [60, 240], 50, 25, 112,5);
+//
+// CanvasUtils.drawRectangle(ctxBackground, [120, 0], 50, 25, 0);
+// CanvasUtils.drawRectangle(ctxBackground, [120, 60], 50, 25, 0);
+//
 
-quackamole.eventManager.on('PEER_CONNECT', ({remotePeerIdentifier}) => {
-    console.log('----- PEER CONNECTED', remotePeerIdentifier);
-});
-
-quackamole.eventManager.on('PEER_DISCONNECT', ({remotePeerIdentifier}) => {
-    console.log('PEER_DISCONNECTED', remotePeerIdentifier);
-    worldEntitiesDraft.delete(remotePeerIdentifier + 'mouseXY');
-    worldEntitiesDraft.delete(remotePeerIdentifier + 'player');
-    worldEntitiesDraft.delete(remotePeerIdentifier + 'gun');
-});
-
-
-////////////////////////
-// DOM EVENT HANDLERS //
-////////////////////////
-const handlePlayerRotation = evt => {
-    mouseXY = CanvasUtils.getScaledMousePosition(ctx, evt);
-};
-
-const handleKeyboardInput = evt => {
-    if (playerInput.has(evt.key)) {
-        playerInput.get(evt.key).active = evt.type === 'keydown';
+document.addEventListener('keydown', evt => {
+    console.log('update player rotation', playerRotation)
+    if (evt.key === 'q') {
+        playerRotation += 5;
+    } else if (evt.key === 'e') {
+        playerRotation -= 5;
     }
-};
 
-window.onbeforeunload = () => {
-    console.log('-----onbeforeunload');
-    quackamole.broadcastData('PEER_DISCONNECT', {remotePeerIdentifier: peerIdentifier});
-    alert("onbeforeunload was triggered");
-    prompt('Do you really want to leave?');
-};
-
-/////////////////
-// MAIN LOGIC //
-////////////////
-const update = () => {
-    // worldEntities = new Map(worldEntitiesDraft);
-    // get movement direction based on WASD input
-    playerMovementDirection = [0, 0];
-    for (let input of playerInput.values()) {
-        if (input.active) { playerMovementDirection = VectorUtils.add(playerMovementDirection, input.direction) }
+    if (evt.key === 'w') {
+        const unrotatedPlayer
+        playerPosition[1] += 5;
+    } else if (evt.key === 's') {
+        playerPosition[1] -= 5;
     }
-    playerMovementDirection = VectorUtils.normalize(playerMovementDirection);
-    // playerMovementDirection = VectorUtils.rotate(playerMovementDirection, playerRotation); // FIXME rotating like this in 2d feels weird
+})
 
-    // update player location
-    playerXY[0] += playerMovementDirection[0] * playerMovementSpeed;
-    playerXY[1] += playerMovementDirection[1] * playerMovementSpeed;
-    playerXY = VectorUtils.max(playerXY, [0, 0]);
-    playerXY = VectorUtils.min(playerXY, [canvas.width, canvas.height]);
-
-    // register entities for drawing
-    worldEntities.set(peerIdentifier + 'mouseXY', () => CanvasUtils.drawCircle(ctx, mouseXY, 5, 'blue'));
-
-    playerRotation = VectorUtils.lookAtRotation(playerXY, mouseXY);
-    worldEntities.set(peerIdentifier + 'player', () => CanvasUtils.drawRectangle(ctx, playerXY, 50, 50, playerRotation));
-
-    const gunTipXYOffset = VectorUtils.multiplyBy(VectorUtils.lookAtDirection(playerXY, mouseXY), 30);
-    worldEntities.set(peerIdentifier + 'gun', () => CanvasUtils.drawLine(ctx, playerXY, VectorUtils.add(playerXY, gunTipXYOffset), 10, 'blue'));
-};
 
 const render = () => {
-    CanvasUtils.clearCtx(ctx);
-    for (let callback of worldEntities.values()) {
-        callback();
-    }
+    ctxBackground.setTransform(1, 0, 0, 1, 0, 0);
+    ctxBackground.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctxBackground.translate((canvas.width / 2), (canvas.height / 2));
+    ctxBackground.rotate(playerRotation * Math.PI / 180);
+    // ctxBackground.translate(...VectorUtils.rotate(playerPosition, playerRotation * Math.PI / 180));
+    CanvasUtils.drawRectangle(ctxBackground, [60, 0], 50, 25, 22, 5);
+    CanvasUtils.drawRectangle(ctxBackground, [60, 60], 50, 25, 45);
+    CanvasUtils.drawRectangle(ctxBackground, [60, 120], 50, 25, 77, 5);
+    CanvasUtils.drawRectangle(ctxBackground, [60, 180], 50, 25, 90);
+    CanvasUtils.drawRectangle(ctxBackground, [60, 240], 50, 25, 112, 5);
 
-    worldEntities = new Map(worldEntitiesDraft);
-    worldEntitiesDraft = worldEntities;
-}
+    CanvasUtils.drawRectangle(ctxBackground, [120, 0], 50, 25, 0);
+    CanvasUtils.drawRectangle(ctxBackground, [120, 60], 50, 25, 0);
 
-const gameLoop = () => {
-    update();
-    render();
-    sendCurrentState();
-    requestAnimationFrame(gameLoop);
-}
-
-//////////////////////
-// INITIALIZE STUFF //
-//////////////////////
-const init = () => {
-    canvas.width = window.innerWidth * 0.95;
-    canvas.height = window.innerHeight * 0.95;
-
-    playerInput.set('w', {id: 'w', active: false, direction: [0, -1]});
-    playerInput.set('a', {id: 'a', active: false, direction: [-1, 0]});
-    playerInput.set('s', {id: 's', active: false, direction: [0, 1]});
-    playerInput.set('d', {id: 'd', active: false, direction: [1, 0]});
-
-    canvas.addEventListener('mousemove', handlePlayerRotation);
-    document.addEventListener('keydown', handleKeyboardInput);
-    document.addEventListener('keyup', handleKeyboardInput);
-
-    quackamole.broadcastData('PEER_CONNECT', {remotePeerIdentifier: peerIdentifier});
-
-    requestAnimationFrame(gameLoop);
 };
 
-init();
 
-// TODO integrate with Quackamole and render other player characters (don't worry about interpolation yet)
-// TODO refactor into classes ==> Entity (abstract base class), Player, Bullet, Wall, Gun, World, Camera etc.
-// TODO optimize the registration of entities to be drawn (track entities in world, draw only entities that have render flag set to true)
-// TODO Improve camera. Try centering player and moving world around him as well as moving world only if player close enough to the wall
-// TODO add a z-index for each entity and sort all entities before rendering them
+const main = () => {
+    // update();
+    render();
+
+    requestAnimationFrame(main);
+}
+
+requestAnimationFrame(main);

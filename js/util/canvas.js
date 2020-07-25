@@ -12,15 +12,19 @@ class CanvasUtils {
         ctx.closePath();
     }
 
-    static drawRectangle = (ctx, position, width, height, rotation) => {
+    static drawRectangle = (ctx, position, width, height, rotationDegrees) => {
+        const savedTransform = ctx.getTransform();
         ctx.fillStyle = 'grey';
         ctx.translate(position[0], position[1]);
-        ctx.rotate(rotation);
+        ctx.rotate(rotationDegrees * Math.PI / 180);
         ctx.fillRect(0 - width/2, 0 - height/2, width, height);
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // console.log('transform', savedTransform);
+        ctx.setTransform(savedTransform);
+        // ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     static clearCtx = (ctx) => {
+        alert('ctx width', ctx.canvas.width);
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     }
 
