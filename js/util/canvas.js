@@ -24,13 +24,14 @@ class CanvasUtils {
     }
 
     static clearCtx = (ctx) => {
-        alert('ctx width', ctx.canvas.width);
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     }
 
     static drawCircle(ctx, position, radius, color) {
         ctx.beginPath();
-        ctx.arc(position[0], position[1], radius, 0, 2 * Math.PI);
+        // ctx.arc(position[0], position[1], radius, 0, 2 * Math.PI);
+        ctx.arc(position[0], position[1], radius, 0, 2 * Math.PI, false);
+
         ctx.fillStyle = color;
         ctx.fill();
     }
@@ -40,13 +41,6 @@ class CanvasUtils {
         ctx.textAlign = alignment;
         ctx.textBaseline = "middle";
         ctx.fillText(text, x, y);
-    }
-
-    static drawBall = (ctx, x, y, radius, color) => {
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
-        ctx.fillStyle = color;
-        ctx.fill();
     }
 
     /**

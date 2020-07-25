@@ -63,9 +63,19 @@ class VectorUtils {
         return useDegrees ? radians * (180 / Math.PI) : radians;
     }
 
-    static rotate = (vector, radians) => {
-        const rotatedX = vector[0] * Math.cos(radians) - vector[1] * Math.sin(radians);
-        const rotatedY = vector[0] * Math.sin(radians) + vector[1] * Math.cos(radians);
-        return [rotatedX, rotatedY];
+    static rotate = (vector, rotation) => {
+        const radians = -rotation * (Math.PI / 180);
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
+        return [
+            Math.round(10000 * (vector[0] * cos - vector[1] * sin)) / 10000,
+            Math.round(10000 * (vector[0] * sin + vector[1] * cos)) / 10000
+        ];
     };
+
+    static round = (vector) => [
+        Math.round(vector[0]),
+        Math.round(vector[1])
+    ];
+
 }

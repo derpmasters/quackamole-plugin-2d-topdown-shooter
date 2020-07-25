@@ -1,80 +1,126 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const canvasBG = document.getElementById('canvas-background');
+const ctxBG = canvasBG.getContext('2d');
 
-const canvasBackground = document.getElementById('canvas-background');
-const ctxBackground = canvasBackground.getContext('2d');
-let playerRotation = 0;
-let playerPosition = [100, 0];
+let playerXY = [100, 0];
+let playerRotation = 45;
+let playerMovementDirection = [0, 0];
+const playerInput = new Map();
+let worldEntities = new Map();
 
-canvas.width = window.innerWidth * 0.95;
-canvas.height = window.innerHeight * 0.95;
+const getPlayerRelXY = (posXY) => {
+  return VectorUtils.relativeVector(playerXY, posXY);
+};
 
-canvasBackground.width = window.innerWidth * 0.95;
-canvasBackground.height = window.innerHeight * 0.95;
+worldEntities.set('rect1', () => CanvasUtils.drawRectangle(ctxBG, getPlayerRelXY([0, 0]), 400, 15, 0));
+worldEntities.set('rect2', () => CanvasUtils.drawRectangle(ctxBG, getPlayerRelXY([-200, -200]), 15, 400, 0));
+worldEntities.set('rect3', () => CanvasUtils.drawRectangle(ctxBG, getPlayerRelXY([200, -200]), 15, 400, 0));
+worldEntities.set('rect3', () => CanvasUtils.drawRectangle(ctxBG, getPlayerRelXY([100, -200]), 15, 200, 0));
+
 
 ////////////
 // PLAYER //
 ////////////
-ctx.translate(canvas.width / 2, canvas.height / 2);
-CanvasUtils.drawRectangle(ctx, [0, 0], 50, 25, 0);
-CanvasUtils.drawCircle(ctx, [0, 0], 10, 'red');
+// ctx.translate(canvas.width / 2, canvas.height / 2);
+// CanvasUtils.drawRectangle(ctx, [0, 0], 50, 25, 0);
+// CanvasUtils.drawCircle(ctx, [0, 0], 10, 'red');
 
-///////////////
-// ZA WARUDO //
-///////////////
-// ctxBackground.translate(canvas.width / 2, canvas.height / 2);
-//
-// ctxBackground.rotate(playerRotation * Math.PI / 180);
-// CanvasUtils.drawRectangle(ctxBackground, [60, 0], 50, 25, 22,5);
-// CanvasUtils.drawRectangle(ctxBackground, [60, 60], 50, 25, 45);
-// CanvasUtils.drawRectangle(ctxBackground, [60, 120], 50, 25, 77,5);
-// CanvasUtils.drawRectangle(ctxBackground, [60, 180], 50, 25, 90);
-// CanvasUtils.drawRectangle(ctxBackground, [60, 240], 50, 25, 112,5);
-//
-// CanvasUtils.drawRectangle(ctxBackground, [120, 0], 50, 25, 0);
-// CanvasUtils.drawRectangle(ctxBackground, [120, 60], 50, 25, 0);
-//
+// const getRotatedInputDirection = () => {
+//     // get movement direction based on WASD input
+//     playerMovementDirection = [0, 0];
+//     for (let input of playerInput.values()) {
+//         if (input.active) {
+//             playerMovementDirection = VectorUtils.add(playerMovementDirection, input.direction)
+//         }
+//     }
+//     playerMovementDirection = VectorUtils.normalize(playerMovementDirection);
+//     playerMovementDirection = VectorUtils.rotate(playerMovementDirection, playerRotation); // FIXME rotating like this in 2d feels weird
+//     console.log('INPUT DIRECTION', playerMovementDirection);
+// }
 
-document.addEventListener('keydown', evt => {
-    console.log('update player rotation', playerRotation)
-    if (evt.key === 'q') {
-        playerRotation += 5;
-    } else if (evt.key === 'e') {
-        playerRotation -= 5;
+const update = () => {
+    // get movement direction based on WASD input
+    playerMovementDirection = [0, 0];
+    for (let input of playerInput.values()) {
+        if (input.active) {
+            playerMovementDirection = VectorUtils.add(playerMovementDirection, input.direction)
+        }
     }
+    playerMovementDirection = VectorUtils.normalize(playerMovementDirection);
+    playerMovementDirection = VectorUtils.rotate(playerMovementDirection, playerRotation); // FIXME rotating like this in 2d feels weird
 
-    if (evt.key === 'w') {
-        const unrotatedPlayer
-        playerPosition[1] += 5;
-    } else if (evt.key === 's') {
-        playerPosition[1] -= 5;
-    }
-})
+    // update player location
+    playerXY[0] += playerMovementDirection[0] * 5;
+    playerXY[1] += playerMovementDirection[1] * 5;
 
 
-const render = () => {
-    ctxBackground.setTransform(1, 0, 0, 1, 0, 0);
-    ctxBackground.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctxBackground.translate((canvas.width / 2), (canvas.height / 2));
-    ctxBackground.rotate(playerRotation * Math.PI / 180);
-    // ctxBackground.translate(...VectorUtils.rotate(playerPosition, playerRotation * Math.PI / 180));
-    CanvasUtils.drawRectangle(ctxBackground, [60, 0], 50, 25, 22, 5);
-    CanvasUtils.drawRectangle(ctxBackground, [60, 60], 50, 25, 45);
-    CanvasUtils.drawRectangle(ctxBackground, [60, 120], 50, 25, 77, 5);
-    CanvasUtils.drawRectangle(ctxBackground, [60, 180], 50, 25, 90);
-    CanvasUtils.drawRectangle(ctxBackground, [60, 240], 50, 25, 112, 5);
-
-    CanvasUtils.drawRectangle(ctxBackground, [120, 0], 50, 25, 0);
-    CanvasUtils.drawRectangle(ctxBackground, [120, 60], 50, 25, 0);
-
+    playerRotation += playerInput.get('q').active ? playerInput.get('q').direction * 5 : 0;
+    playerRotation += playerInput.get('e').active ? playerInput.get('e').direction * 5 : 0;
+    playerRotation = playerRotation % 360;
 };
 
+const render = () => {
+    ctxBG.clearRect(-(ctxBG.canvas.width), -(ctxBG.canvas.height), ctxBG.canvas.width * 2, ctxBG.canvas.height * 2);
 
-const main = () => {
-    // update();
-    render();
+    ctxBG.setTransform(1, 0, 0, 1, 0, 0);
+    ctxBG.translate((canvas.width / 2), (canvas.height / 2) + 100);
+    ctxBG.rotate(playerRotation * Math.PI / 180);
 
-    requestAnimationFrame(main);
+    for (let callback of worldEntities.values()) { callback(); }
+
+    CanvasUtils.drawText(ctxBG, `playerXY ${VectorUtils.round(playerXY)}`, 0, 50);
+
+    // CanvasUtils.drawLine(ctxBG, VectorUtils.add([0,0], [0, -100]), VectorUtils.add([0,0], [0, 100]), 2, 'green');
+    // CanvasUtils.drawLine(ctxBG, VectorUtils.add([0,0], [-200, 0]), VectorUtils.add([0,0], [200, 0]), 2, 'red');
+    CanvasUtils.drawLine(ctxBG, getPlayerRelXY([0, -10000]), getPlayerRelXY([0, 10000]), 2, 'green');
+    CanvasUtils.drawLine(ctxBG, getPlayerRelXY([-10000, 0]), getPlayerRelXY([10000, 0]), 2, 'red');
+
+    getPlayerRelXY([0, 0])
+
+    // worldEntities = new Map(worldEntitiesDraft);
+    // worldEntitiesDraft = worldEntities;
 }
 
-requestAnimationFrame(main);
+const gameLoop = () => {
+    update();
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+//////////////////////
+// INITIALIZE STUFF //
+//////////////////////
+const handleMouseInput = evt => {
+    playerRotation += Math.min(evt.movementX / 3, 5);
+};
+
+const handleKeyboardInput = evt => {
+    if (playerInput.has(evt.key)) { playerInput.get(evt.key).active = evt.type === 'keydown'; }
+};
+
+const init = () => {
+    playerInput.set('w', {id: 'w', active: false, direction: [0, -1]});
+    playerInput.set('a', {id: 'a', active: false, direction: [-1, 0]});
+    playerInput.set('s', {id: 's', active: false, direction: [0, 1]});
+    playerInput.set('d', {id: 'd', active: false, direction: [1, 0]});
+    playerInput.set('q', {id: 'q', active: false, direction: 1});
+    playerInput.set('e', {id: 'e', active: false, direction: -1});
+
+    canvas.addEventListener('mousemove', handleMouseInput);
+    document.addEventListener('keydown', handleKeyboardInput);
+    document.addEventListener('keyup', handleKeyboardInput);
+    canvas.onclick = () => canvas.requestPointerLock();
+    canvasBG.onclick = () => canvas.requestPointerLock();
+
+    // ctx.translate((canvas.width / 2), (canvas.height / 2));
+    // CanvasUtils.drawCircle(ctx, [0, 0], 20, 'salmon');
+
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    CanvasUtils.drawRectangle(ctx, [0, 100], 50, 25, 0);
+    CanvasUtils.drawCircle(ctx, [0, 100], 10, 'red');
+
+    requestAnimationFrame(gameLoop);
+};
+
+init();
