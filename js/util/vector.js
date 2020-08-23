@@ -56,6 +56,15 @@ class VectorUtils {
         return [x, y];
     };
 
+    static clamp = (v, vMin, vMax) => {
+        return this.max(this.min(v, vMax), vMin);
+    };
+
+    static isXAxisLonger = (vector) => {
+        return vector[0] > vector[1];
+    }
+
+
     static lookAtDirection = (from, to) => this.normalize(this.relativeVector(from, to));
 
     static lookAtRotation = (from, to, useDegrees = false) => {
@@ -77,5 +86,4 @@ class VectorUtils {
         Math.round(vector[0]),
         Math.round(vector[1])
     ];
-
 }

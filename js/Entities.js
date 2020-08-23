@@ -1,19 +1,30 @@
 class Entity {
-    static registered = new Map();
-    constructor(x = 0, y = 0, w = 0, h = 0, r = 0) {
+    static registeredAll = new Map();
+    static registeredMoving = new Map();
+    static registeredStatic = new Map();
+
+    constructor(x = null, y = null, w = null, h = null, rotation = null, radius = null) {
         this.x = x;
         this.y = y;
         this.w = w;
         this.h = h;
-        this.r = r;
+        this.rotation = rotation;
+        this.radius = radius;
         this.id = null;
         this.ctx = null;
     }
 
-    register = (ctx, id) => {
+    get left() { return this.x - this.w / 2; }
+    get right() { return this.x + this.w /2; }
+    get top() { return this.y - this.h / 2; }
+    get bottom() { return this.y + this.h / 2; }
+    get XY() { return [this.x, this.y]; }
+
+    register = (ctx, id, moving = false) => {
         this.id = id;
         this.ctx = ctx;
-        Entity.registered.set(id, this);
+        Entity.registeredAll.set(id, this);
+        moving ? Entity.registeredMoving.set(id, this) : Entity.registeredStatic.set(id, this);
         return this;
     }
 
@@ -21,7 +32,7 @@ class Entity {
         if (this.id) {
             this.ctx = null;
             this.id = null;
-            Entity.registered.delete(this.id);
+            Entity.registeredAll.delete(this.id);
         }
     }
 
@@ -36,8 +47,8 @@ class Entity {
 
 
 class Player extends Entity {
-    constructor(x, y, w, h, r) {
-        super(x, y, w, h, r);
+    constructor(x, y, rotation, radius) {
+        super(x, y, radius, radius, rotation, radius);
         this.input = new Map();
         this.movementDirection = [0, 0];
     }
@@ -49,7 +60,10 @@ class Player extends Entity {
     render = () => {
         // NOTE: set Y to 100 here to off-center player character + outside ctxBG.translate((canvas.width / 2), (canvas.height / 2) + 100);
         CanvasUtils.drawRectangle(this.ctx, [0, 0], 50, 25, 0);
-        CanvasUtils.drawCircle(this.ctx, [0, 0], 10, 'red');
+        CanvasUtils.drawRectangle(this.ctx, [-10, -17,5], 10, 10, 0);
+        CanvasUtils.drawRectangle(this.ctx, [10, -17,5], 10, 10, 0);
+
+        CanvasUtils.drawCircle(this.ctx, [0, -2,5], 10, 'blue');
     }
 
     init = (ctx) => {
@@ -77,20 +91,64 @@ class Player extends Entity {
             }
         }
         this.movementDirection = VectorUtils.normalize(this.movementDirection);
-        this.movementDirection = VectorUtils.rotate(this.movementDirection, this.r); // FIXME rotating like this in 2d feels weird
+        this.movementDirection = VectorUtils.rotate(this.movementDirection, this.rotation); // FIXME rotating like this in 2d feels weird
 
         // update player location
         this.x += this.movementDirection[0] * 5;
         this.y += this.movementDirection[1] * 5;
 
+        for (let [id, staticEntity] of Entity.registeredStatic.entries()) {
+            if (id) {
+                const collisionDetected = CollisionUtils.circleRect(this, staticEntity);
 
-        this.r += this.input.get('q').active ? this.input.get('q').direction * 5 : 0;
-        this.r += this.input.get('e').active ? this.input.get('e').direction * 5 : 0;
-        this.r = this.r % 360;
+                if (collisionDetected) {
+                    const rel = VectorUtils.relativeVector(staticEntity.XY, this.XY);
+
+                    // check which axis requires least correction
+                    let correctionX = null;
+                    let correctionY = null;
+
+                    let distanceX = null;
+                    let distanceY = null;
+
+                    // Correction X axis, to left or right
+                    if (rel[0] < 0) {
+                        distanceX = VectorUtils.relativeVector(this.XY, [staticEntity.left, this.y])[0];
+                        correctionX = staticEntity.left - this.radius;
+                    } else {
+                        distanceX = VectorUtils.relativeVector(this.XY, [staticEntity.right, this.y])[0];
+                        correctionX = staticEntity.right + this.radius;
+                    }
+
+                    // // Correction Y axis, to top or bottom
+                    if (rel[1] < 0) {
+                        distanceY = VectorUtils.relativeVector(this.XY, [this.x, staticEntity.top])[1];
+                        correctionY = staticEntity.top - this.radius;
+                    } else {
+                        distanceY = VectorUtils.relativeVector(this.XY, [this.x, staticEntity.bottom])[1];
+                        correctionY = staticEntity.bottom + this.radius;
+                    }
+
+                    // Check if player within Y axis bounds of colliding object
+                    if (this.bottom > staticEntity.top && this.top < staticEntity.bottom) {
+                        this.x = correctionX;
+                    }
+
+                    // Check if player within X axis bounds of colliding object
+                    if (this.right > staticEntity.left && this.left < staticEntity.right) {
+                        this.y = correctionY;
+                    }
+                }
+            }
+        }
+
+        this.rotation += this.input.get('q').active ? this.input.get('q').direction * 5 : 0;
+        this.rotation += this.input.get('e').active ? this.input.get('e').direction * 5 : 0;
+        this.rotation = this.rotation % 360;
     };
 
     _handleMouseInput = evt => {
-        this.r += Math.max(Math.min(evt.movementX / 10, 5), -5);
+        this.rotation += Math.max(Math.min(evt.movementX / 10, 5), -5);
     };
 
     _handleKeyboardInput = evt => {
@@ -107,7 +165,7 @@ class Wall extends Entity {
 
     render = () => {
         // CanvasUtils.drawRectangle(ctx, [this.x, this.y], this.w, this.h, this.r);
-        CanvasUtils.drawRectangle(this.ctx, getPlayerRelXY([this.x, this.y]), this.w, this.h, this.r);
+        CanvasUtils.drawRectangle(this.ctx, getPlayerRelXY([this.x, this.y]), this.w, this.h, this.rotation);
     }
 }
 
@@ -118,9 +176,10 @@ class Enemy extends Entity {
 
     render = () => {
         // CanvasUtils.drawRectangle(ctx, [this.x, this.y], this.w, this.h, this.r);
-        CanvasUtils.drawRectangle(this.ctx, getPlayerRelXY([this.x, this.y]), this.w, this.h, this.r);
+        // CanvasUtils.drawRectangle(this.ctx, getPlayerRelXY([this.x, this.y]), this.w, this.h, this.r);
 
-        CanvasUtils.drawRectangle(this.ctx, getPlayerRelXY([this.x, this.y]), 50, 25, 0);
-        CanvasUtils.drawCircle(this.ctx, [0, 0], 10, 'red');
+        CanvasUtils.drawRectangle(this.ctx, getPlayerRelXY([this.x, this.y]), 50, 25, -this.rotation);
+        CanvasUtils.drawRectangle(this.ctx, getPlayerRelXY([this.x, this.y + 15]), 25, 30, -this.rotation);
+        CanvasUtils.drawCircle(this.ctx, getPlayerRelXY([this.x, this.y]), 10, 'red');
     }
 }
